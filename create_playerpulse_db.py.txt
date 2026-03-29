@@ -1,0 +1,106 @@
+import sqlite3
+
+# Path to save your database
+db_path = r"C:\Users\shanna\Documents\PlayerPulse\playerpulse.db"
+
+# Connect to SQLite (creates file if it doesn't exist)
+conn = sqlite3.connect(db_path)
+c = conn.cursor()
+
+# -----------------------------
+# Create Tables
+# -----------------------------
+c.execute('''
+CREATE TABLE IF NOT EXISTS teams (
+    team_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    age_group TEXT,
+    level TEXT
+)
+''')
+
+c.execute('''
+CREATE TABLE IF NOT EXISTS players (
+    player_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_id INTEGER,
+    first_name TEXT,
+    last_name TEXT,
+    position TEXT,
+    jersey_number INTEGER,
+    age_group TEXT,
+    FOREIGN KEY(team_id) REFERENCES teams(team_id)
+)
+''')
+
+c.execute('''
+CREATE TABLE IF NOT EXISTS games (
+    game_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_id INTEGER,
+    opponent_name TEXT,
+    game_date TEXT,
+    location TEXT,
+    result TEXT,
+    team_score INTEGER,
+    opponent_score INTEGER,
+    FOREIGN KEY(team_id) REFERENCES teams(team_id)
+)
+''')
+
+c.execute('''
+CREATE TABLE IF NOT EXISTS player_game_stats (
+    game_id INTEGER,
+    player_id INTEGER,
+    minutes_played INTEGER,
+    goals INTEGER,
+    assists INTEGER,
+    chances_created INTEGER,
+    shots INTEGER,
+    shots_on_target INTEGER,
+    pass_attempts INTEGER,
+    passes_completed INTEGER,
+    tackles INTEGER,
+    interceptions INTEGER,
+    FOREIGN KEY(game_id) REFERENCES games(game_id),
+    FOREIGN KEY(player_id) REFERENCES players(player_id)
+)
+''')
+
+# -----------------------------
+# Insert sample data
+# -----------------------------
+teams_data = [
+    ('Lions FC','U14','Competitive'),
+    ('Tigers FC','U16','Recreational'),
+    ('Eagles FC','U18','Competitive')
+]
+c.executemany('INSERT INTO teams (name, age_group, level) VALUES (?, ?, ?)', teams_data)
+
+players_data = [
+    (1,'John','Smith','Forward',9,'U14'),
+    (1,'Alex','Brown','Midfielder',7,'U14'),
+    (2,'Mia','Jones','Defender',4,'U16')
+]
+c.executemany('INSERT INTO players (team_id, first_name, last_name, position, jersey_number, age_group) VALUES (?, ?, ?, ?, ?, ?)', players_data)
+
+games_data = [
+    (1,'Sharks FC','2026-03-01','Home','Win',3,1),
+    (2,'Wolves FC','2026-03-05','Away','Loss',0,2)
+]
+c.executemany('INSERT INTO games (team_id, opponent_name, game_date, location, result, team_score, opponent_score) VALUES (?, ?, ?, ?, ?, ?, ?)', games_data)
+
+player_stats_data = [
+    (1,1,80,2,1,3,5,3,20,15,2,1),
+    (1,2,75,0,2,4,3,2,25,20,3,2),
+    (2,3,90,0,0,1,1,1,18,16,4,3)
+]
+c.executemany('''
+INSERT INTO player_game_stats
+(game_id, player_id, minutes_played, goals, assists, chances_created, shots, shots_on_target, pass_attempts, passes_completed, tackles, interceptions)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+''', player_stats_data)
+
+# Commit changes and close
+conn.commit()
+conn.close()
+
+print("Database created and saved to PlayerPulse folder!")
