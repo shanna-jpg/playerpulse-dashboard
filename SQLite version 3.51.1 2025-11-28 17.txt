@@ -1,0 +1,165 @@
+SQLite version 3.51.1 2025-11-28 17:28:25
+Enter ".help" for usage hints.
+Connected to a transient in-memory database.
+Use ".open FILENAME" to reopen on a persistent database.
+sqlite>
+sqlite> CREATE TABLE teams (
+(x1...>     team_id INTEGER PRIMARY KEY AUTOINCREMENT,
+(x1...>     name TEXT NOT NULL,
+(x1...>     age_group TEXT,
+(x1...>     level TEXT
+(x1...> );
+sqlite> CREATE TABLE players (
+(x1...>     player_id INTEGER PRIMARY KEY AUTOINCREMENT,
+(x1...>     team_id INTEGER,
+(x1...>     first_name TEXT,
+(x1...>     last_name TEXT,
+(x1...>     position TEXT,
+(x1...>     jersey_number INTEGER,
+(x1...>     age_group TEXT,
+(x1...>     FOREIGN KEY (team_id) REFERENCES teams(team_id)
+(x1...> );
+sqlite> CREATE TABLE games (
+(x1...>     game_id INTEGER PRIMARY KEY AUTOINCREMENT,
+(x1...>     team_id INTEGER,
+(x1...>     opponent_name TEXT,
+(x1...>     game_date TEXT,
+(x1...>     location TEXT,
+(x1...>     result TEXT,
+(x1...>     team_score INTEGER,
+(x1...>     opponent_score INTEGER,
+(x1...>     FOREIGN KEY (team_id) REFERENCES teams(team_id)
+(x1...> );
+sqlite> CREATE TABLE player_game_stats (
+(x1...>     stat_id INTEGER PRIMARY KEY AUTOINCREMENT,
+(x1...>     game_id INTEGER,
+(x1...>     player_id INTEGER,
+(x1...>     minutes_played INTEGER,
+(x1...>     goals INTEGER,
+(x1...>     assists INTEGER,
+(x1...>     chances_created INTEGER,
+(x1...>     shots INTEGER,
+(x1...>     shots_on_target INTEGER,
+(x1...>     pass_attempts INTEGER,
+(x1...>     passes_completed INTEGER,
+(x1...>     tackles INTEGER,
+(x1...>     interceptions INTEGER,
+(x1...>     FOREIGN KEY (game_id) REFERENCES games(game_id),
+(x1...>     FOREIGN KEY (player_id) REFERENCES players(player_id)
+(x1...> );
+sqlite> INSERT INTO teams (name, age_group, level) VALUES
+   ...> ('Tuscaloosa United', 'U17', 'Competitive'),
+   ...> ('Bama FC', 'U16', 'Elite');
+sqlite> INSERT INTO players (team_id, first_name, last_name, position, jersey_number, age_group) VALUES
+   ...> (1, 'Jake', 'Thompson', 'Forward', 9, 'U17'),
+   ...> (1, 'Ethan', 'Walker', 'Midfielder', 8, 'U17'),
+   ...> (1, 'Chris', 'Johnson', 'Defender', 5, 'U17'),
+   ...> (2, 'Liam', 'Davis', 'Forward', 11, 'U16');
+sqlite> INSERT INTO games (team_id, opponent_name, game_date, location, result, team_score, opponent_score) VALUES
+   ...> (1, 'Hoover SC', '2026-03-20', 'Home', 'Win', 3, 1),
+   ...> (1, 'Birmingham United', '2026-03-25', 'Away', 'Loss', 1, 2),
+   ...> (2, 'Montgomery FC', '2026-03-22', 'Home', 'Tie', 2, 2);
+sqlite> INSERT INTO player_game_stats
+   ...> (game_id, player_id, minutes_played, goals, assists, chances_created, shots, shots_on_target, pass_attempts, passes_completed, tackles, interceptions)
+   ...> VALUES
+   ...> (1, 1, 90, 2, 0, 3, 5, 3, 20, 15, 1, 0),
+   ...> (1, 2, 90, 0, 2, 4, 2, 1, 50, 42, 3, 2),
+   ...> (1, 3, 90, 0, 0, 1, 1, 0, 40, 35, 5, 4),
+   ...>
+   ...> (2, 1, 85, 1, 0, 2, 4, 2, 18, 12, 1, 0),
+   ...> (2, 2, 90, 0, 1, 3, 1, 1, 48, 40, 2, 3),
+   ...>
+   ...> (3, 4, 90, 2, 0, 2, 6, 4, 22, 16, 1, 1);
+sqlite> SELECT
+   ...>     p.first_name || ' ' || p.last_name AS player_name,
+   ...>     COUNT(s.stat_id) AS games_played,
+   ...>     AVG(s.goals) AS avg_goals,
+   ...>     AVG(s.assists) AS avg_assists,
+   ...>     AVG(s.shots) AS avg_shots,
+   ...>     AVG(s.passes_completed) AS avg_passes_completed
+   ...> FROM players p
+   ...> LEFT JOIN player_game_stats s ON p.player_id = s.player_id
+   ...> GROUP BY p.player_id;
+Jake Thompson|2|1.5|0.0|4.5|13.5
+Ethan Walker|2|0.0|1.5|1.5|41.0
+Chris Johnson|1|0.0|0.0|1.0|35.0
+Liam Davis|1|2.0|0.0|6.0|16.0
+sqlite> SELECT
+   ...>     p.first_name || ' ' || p.last_name AS player_name,
+   ...>     g.opponent_name,
+   ...>     (4*s.goals + 3*s.assists + 0.5*s.shots + 0.1*s.passes_completed - 0.2*(s.pass_attempts - s.passes_completed)) AS performance_score
+   ...> FROM player_game_stats s
+   ...> JOIN players p ON s.player_id = p.player_id
+   ...> JOIN games g ON s.game_id = g.game_id;
+Jake Thompson|Hoover SC|11.0
+Ethan Walker|Hoover SC|9.6
+Chris Johnson|Hoover SC|3.0
+Jake Thompson|Birmingham United|6.0
+Ethan Walker|Birmingham United|5.9
+Liam Davis|Montgomery FC|11.4
+sqlite> SELECT
+   ...>     t.name AS team_name,
+   ...>     COUNT(g.game_id) AS games_played,
+   ...>     SUM(CASE WHEN g.result = 'Win' THEN 1 ELSE 0 END) AS wins,
+   ...>     SUM(CASE WHEN g.result = 'Loss' THEN 1 ELSE 0 END) AS losses,
+   ...>     SUM(CASE WHEN g.result = 'Tie' THEN 1 ELSE 0 END) AS ties,
+   ...>     SUM(g.team_score) AS goals_scored,
+   ...>     SUM(g.opponent_score) AS goals_against
+   ...> FROM teams t
+   ...> LEFT JOIN games g ON t.team_id = g.team_id
+   ...> GROUP BY t.team_id;
+Tuscaloosa United|2|1|1|0|4|3
+Bama FC|1|0|0|1|2|2
+sqlite> SELECT
+   ...>     t.name AS team_name,
+   ...>     g.game_id,
+   ...>     AVG(4*s.goals + 3*s.assists + 0.5*s.shots + 0.1*s.passes_completed - 0.2*(s.pass_attempts - s.passes_completed)) AS avg_performance_score
+   ...> FROM teams t
+   ...> JOIN games g ON t.team_id = g.team_id
+   ...> JOIN player_game_stats s ON g.game_id = s.game_id
+   ...> GROUP BY g.game_id;
+Tuscaloosa United|1|7.86666666666667
+Tuscaloosa United|2|5.95
+Bama FC|3|11.4
+sqlite> SELECT
+   ...>     p.first_name || ' ' || p.last_name AS player_name,
+   ...>     SUM(s.passes_completed) AS total_passes_completed,
+   ...>     SUM(s.pass_attempts) AS total_pass_attempts,
+   ...>     ROUND( (CAST(SUM(s.passes_completed) AS FLOAT)/SUM(s.pass_attempts))*100, 2) AS pass_accuracy_percent
+   ...> FROM players p
+   ...> JOIN player_game_stats s ON p.player_id = s.player_id
+   ...> GROUP BY p.player_id;
+Jake Thompson|27|38|71.05
+Ethan Walker|82|98|83.67
+Chris Johnson|35|40|87.5
+Liam Davis|16|22|72.73
+sqlite> SELECT
+   ...>     p.first_name || ' ' || p.last_name AS player_name,
+   ...>     SUM(s.shots_on_target) AS shots_on_target,
+   ...>     SUM(s.shots) AS total_shots,
+   ...>     ROUND( (CAST(SUM(s.shots_on_target) AS FLOAT)/SUM(s.shots))*100, 2) AS shot_accuracy_percent
+   ...> FROM players p
+   ...> JOIN player_game_stats s ON p.player_id = s.player_id
+   ...> GROUP BY p.player_id;
+Jake Thompson|5|9|55.56
+Ethan Walker|2|3|66.67
+Chris Johnson|0|1|0.0
+Liam Davis|4|6|66.67
+sqlite> SELECT
+   ...>     p.first_name || ' ' || p.last_name AS player_name,
+   ...>     SUM(4*s.goals + 3*s.assists + 0.5*s.shots_on_target + 0.1*s.passes_completed + 1*s.chances_created + 0.5*s.tackles + 0.5*s.interceptions) AS contribution_index
+   ...> FROM players p
+   ...> JOIN player_game_stats s ON p.player_id = s.player_id
+   ...> GROUP BY p.player_id
+   ...> ORDER BY contribution_index DESC;
+Ethan Walker|30.2
+Jake Thompson|23.2
+Liam Davis|14.6
+Chris Johnson|9.0
+sqlite> save;
+Parse error: near "save": syntax error
+  save;
+  ^--- error here
+sqlite> .save C:\Users\shanna\Documents\PlayerPulse\playerpulse.db
+sqlite> .save C:\Users\shanna\Documents\PlayerPulse\playerpulse.db;
+sqlite>
